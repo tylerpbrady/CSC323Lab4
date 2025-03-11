@@ -1,6 +1,8 @@
-import sys, time, json, os
+import sys, time, json, os, hashlib
 from ecdsa import VerifyingKey, SigningKey
 from p2pnetwork.node import Node
+from Crypto.Cipher import AES
+from Crypto import Random
 
 SERVER_ADDR = "zachcoin.net"
 SERVER_PORT = 9067
@@ -76,6 +78,61 @@ class ZachCoinClient (Node):
     def node_request_to_stop(self):
         print("node is requested to stop!")
 
+    # Helper Functions
+    def mine_transaction(self, utx, prev, difficulty = DIFFICULTY):
+        nonce = Random.new().read(AES.block_size).hex()
+        while( int( hashlib.sha256(json.dumps(utx, sort_keys=True).encode('utf8') + prev.encode('utf-8') + nonce.encode('utf-8')).hexdigest(), 16) > difficulty):
+            nonce = Random.new().read(AES.block_size).hex()
+        pow = hashlib.sha256(json.dumps(utx, sort_keys=True).encode('utf8') + prev.encode('utf-8') + nonce.encode('utf-8')).hexdigest()
+        
+        return pow, nonce
+
+    def verify_transaction(self, transaction):
+        #print(block)
+        req_fields = ["type", "input", "sig", "output"]
+        inp_fields = ["id", "n"]
+        out_fields = ["value", "pub_key"]
+        for f in req_fields:
+            if f not in transaction:
+                print("Invalid transaction: missing field", f)
+                return
+            else:
+                if f == "type":
+                    if transaction["type"] != 1:
+                        print("Invalid transaction: type value is not transaction")
+                        return
+                if f == "input":
+                    for g in inp_fields:
+                        if g not in transaction[f]:
+                            print("Invalid transaction: missing field", g)
+                            return
+                elif f == "output":
+                    for g in out_fields:
+                        out = transaction[f]
+                        for o in out:
+                            if g not in o:
+                                print("Invalid transaction: missing field", g)
+                                return
+                            
+    def verify_block(self, block):
+        prev_genesis = "b4b9b8f78ab3dc70833a19bf7f2a0226885ae2416d41f4f0f798762560b81b60"
+        req_fields = ["type", "id", "nonce", "pow", "prev"]
+        for f in req_fields:
+            if f not in block:
+                print("Invalid block: missing field", f)
+                return
+            else:
+                if f == "type":
+                    if block["type"] != 0:
+                        print("Invalid block: type value is not block")
+                        return
+                if f == "id":
+                    pass
+                
+        
+
+
+
 
 def main():
 
@@ -120,7 +177,12 @@ def main():
         print("=" * (int(len(slogan)/2) - int(len(' ZachCoin™')/2)), 'ZachCoin™', "=" * (int(len(slogan)/2) - int(len('ZachCoin™ ')/2)))
         print(slogan)
         print("=" * len(slogan),'\n')
-        x = input("\t0: Print keys\n\t1: Print blockchain\n\t2: Print UTX pool\n\nEnter your choice -> ")
+        x = input("\t0: Print keys\n"
+                  "\t1: Print blockchain\n"
+                  "\t2: Print UTX pool\n"
+                  "\t3: Create UTX\n"
+                  "\t4: Mine a block\n\n"
+                  "Enter your choice -> ")
         try:
             x = int(x)
         except:
@@ -134,8 +196,18 @@ def main():
             print(json.dumps(client.blockchain, indent=1))
         elif x == 2:
             print(json.dumps(client.utx, indent=1))
+
         # TODO: Add options for creating and mining transactions
         # as well as any other additional features
+        elif x == 3:
+            pass
+        elif x == 4:
+            tx = client.utx[1]
+            #print(block)
+
+            client.verify_transaction(tx)
+            #client.mine_transaction()
+        
 
         input()
         
