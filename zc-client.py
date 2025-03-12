@@ -144,23 +144,27 @@ class ZachCoinClient (Node):
         return True
                             
     def validate_block(self, block):
-        prev_genesis = "b4b9b8f78ab3dc70833a19bf7f2a0226885ae2416d41f4f0f798762560b81b60"
         req_fields = ["type", "id", "nonce", "pow", "prev"]
-        for f in req_fields:
+        for f in req_fields: # a.
             if f not in block:
                 print("Invalid block: missing field", f)
-                return
+                return False
             else:
                 if f == "type":
-                    if block["type"] != self.BLOCK:
+                    if block[f] != self.BLOCK: # b.
                         print("Invalid block: type value is not block")
-                        return
-                if f == "id":
-                    pass
-                if f == "prev":
-                    pass
+                        return False
+                if f == "id": # c.
+                    block_id = hashlib.sha256(json.dumps(block['tx'], sort_keys=True).encode('utf8')).hexdigest()
+                    if block[f] != block_id:
+                        print("Invalid block: incorrect block id")
+                        return False
+                if f == "prev": # d.
+                    if block[f] is not self.blockchain[len(self.blockchain)-1]["id"]: # should be last block on blockchain
+                        print("Invalid block: does not point to previous block on blockchain")
                 if f == "pow":
                     pass
+        
 
         
 
