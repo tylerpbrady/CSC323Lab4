@@ -72,6 +72,8 @@ class ZachCoinClient (Node):
                     self.utx = data['utxpool']
                 #TODO: Validate blocks
                 # call validate block here
+                # if (self.validate_block()):
+                # add to blockchain
 
     def node_disconnect_with_outbound_node(self, connected_node):
         print("node wants to disconnect with oher outbound node: " + connected_node.id)
@@ -162,13 +164,32 @@ class ZachCoinClient (Node):
                 if f == "prev": # d.
                     if block[f] is not self.blockchain[len(self.blockchain)-1]["id"]: # should be last block on blockchain
                         print("Invalid block: does not point to previous block on blockchain")
-                if f == "pow":
+                if f == "pow":  # e.
                     pass
+                if f == "tx": # f.
+                    return self.validate_transaction(block[f])
+                
+    def create_utx(self):
+        utx = {
+            'type': self.TRANSACTION,
+            'input': {
+                'id': BLOCK_ID,
+                'n': N
+            },
+            'sig': ECDSA_SIGNATURE,
+            'output': [
+                {
+                    'value': AMOUNT,
+                    'pub_key': ECDSA_PUBLIC_KEY
+                },
+                {
+                    'value': AMOUNT,
+                    'pub_key': ECDSA_PUBLIC_KEY
+                }
+            ]
+        }
+        return utx
         
-
-        
-
-
 
 
 def main():
