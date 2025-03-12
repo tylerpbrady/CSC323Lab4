@@ -165,7 +165,10 @@ class ZachCoinClient (Node):
                     if block[f] is not self.blockchain[len(self.blockchain)-1]["id"]: # should be last block on blockchain
                         print("Invalid block: does not point to previous block on blockchain")
                 if f == "pow":  # e.
-                    pass
+                    computed_pow = int(hashlib.sha256(json.dumps(block["tx"], sort_keys=True).encode('utf8') + block["prev"].encode('utf-8') + block["nonce"].encode('utf-8')).hexdigest(), 16)
+                    if computed_pow != block["pow"] or int(computed_pow, 16) > self.DIFFICULTY:
+                        print("Invalid block: Invalid proof of work")
+                        return False
                 if f == "tx": # f.
                     return self.validate_transaction(block[f])
                 
