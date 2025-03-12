@@ -71,6 +71,7 @@ class ZachCoinClient (Node):
                 elif data['type'] == self.UTXPOOL:
                     self.utx = data['utxpool']
                 #TODO: Validate blocks
+                # call validate block here
 
     def node_disconnect_with_outbound_node(self, connected_node):
         print("node wants to disconnect with oher outbound node: " + connected_node.id)
@@ -78,43 +79,71 @@ class ZachCoinClient (Node):
     def node_request_to_stop(self):
         print("node is requested to stop!")
 
-    # Helper Functions
-    def mine_transaction(self, utx, prev, difficulty = DIFFICULTY):
+    def mine_transaction(self, utx, prev):
         nonce = Random.new().read(AES.block_size).hex()
-        while( int( hashlib.sha256(json.dumps(utx, sort_keys=True).encode('utf8') + prev.encode('utf-8') + nonce.encode('utf-8')).hexdigest(), 16) > difficulty):
+        while( int( hashlib.sha256(json.dumps(utx, sort_keys=True).encode('utf8') + prev.encode('utf-8') + nonce.encode('utf-8')).hexdigest(), 16) > self.DIFFICULTY):
             nonce = Random.new().read(AES.block_size).hex()
         pow = hashlib.sha256(json.dumps(utx, sort_keys=True).encode('utf8') + prev.encode('utf-8') + nonce.encode('utf-8')).hexdigest()
         
         return pow, nonce
+    
+    def sum_io(self, block, prev):
+        # get input block number
+        # index into that block, get output'
+        # check that input is equal to sum of block outputs
+        inp_transaction = block["input"]["n"]
+        inp_val = prev[inp_transaction]["value"]
 
-    def verify_transaction(self, transaction):
-        #print(block)
+        cur_outputs = 0
+        for i in range(len(block["output"])):
+            cur_outputs += block["output"][i]["value"]
+
+        return cur_outputs == inp_val
+
+    def validate_transaction(self, transaction):
+        print(transaction)
         req_fields = ["type", "input", "sig", "output"]
         inp_fields = ["id", "n"]
         out_fields = ["value", "pub_key"]
-        for f in req_fields:
+        inp_ref = {}
+        for f in req_fields: # i.
             if f not in transaction:
                 print("Invalid transaction: missing field", f)
-                return
+                return False
             else:
-                if f == "type":
-                    if transaction["type"] != 1:
+                if f == "type": # ii.
+                    if transaction["type"] != self.TRANSACTION:
                         print("Invalid transaction: type value is not transaction")
-                        return
+                        return False
                 if f == "input":
                     for g in inp_fields:
+                        if g == "id":
+                            valid = False # iii.
+                            for i in range(len(self.blockchain)):
+                                t = transaction["input"]
+                                b = self.blockchain[i]
+                                if t["id"] in b["id"] and len(b["tx"]["output"]) >= t["n"] + 1: # iii.
+                                    valid = True
+                                    inp_ref = b["tx"]["output"]
+                            if not valid:
+                                    print("Invalid transaction: points to unverified block")
+                                    return False
                         if g not in transaction[f]:
                             print("Invalid transaction: missing field", g)
-                            return
+                            return False
                 elif f == "output":
                     for g in out_fields:
                         out = transaction[f]
                         for o in out:
                             if g not in o:
                                 print("Invalid transaction: missing field", g)
-                                return
+                                return False
+                        if not self.sum_io(transaction, inp_ref): # v.
+                            print("Invalid transaction: sum of input does not equal sum of outputs")
+                            return False
+        return True
                             
-    def verify_block(self, block):
+    def validate_block(self, block):
         prev_genesis = "b4b9b8f78ab3dc70833a19bf7f2a0226885ae2416d41f4f0f798762560b81b60"
         req_fields = ["type", "id", "nonce", "pow", "prev"]
         for f in req_fields:
@@ -123,12 +152,16 @@ class ZachCoinClient (Node):
                 return
             else:
                 if f == "type":
-                    if block["type"] != 0:
+                    if block["type"] != self.BLOCK:
                         print("Invalid block: type value is not block")
                         return
                 if f == "id":
                     pass
-                
+                if f == "prev":
+                    pass
+                if f == "pow":
+                    pass
+
         
 
 
@@ -205,7 +238,7 @@ def main():
             tx = client.utx[1]
             #print(block)
 
-            client.verify_transaction(tx)
+            client.validate_transaction(tx)
             #client.mine_transaction()
         
 
