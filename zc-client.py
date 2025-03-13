@@ -71,10 +71,10 @@ class ZachCoinClient (Node):
                 elif data['type'] == self.UTXPOOL:
                     self.utx = data['utxpool']
                 #TODO: Validate blocks
-                for block in self.blockchain:
-                    if not self.validate_block(block):
-                        self.blockchain.remove(block)
-                        self.utx.append(block)
+                for i in range(len(self.blockchain) - 1, 0, -1):
+                    if not self.validate_block(self.blockchain[i]):
+                        self.blockchain.remove(self.blockchain[i])
+                        #self.utx.append(self.blockchain[i]["tx"])
 
     def node_disconnect_with_outbound_node(self, connected_node):
         print("node wants to disconnect with oher outbound node: " + connected_node.id)
@@ -198,6 +198,7 @@ class ZachCoinClient (Node):
                 if f == "prev": # d.
                     ind = self.blockchain.index(block)
                     if block[f] != self.blockchain[ind-1]["id"]:
+                        print(block[f], self.blockchain[ind-1]["id"])
                         print("Invalid block: does not point to previous block on blockchain")
                         return False
                 if f == "pow":  # e.
@@ -301,17 +302,11 @@ def main():
         elif x == 3:
             pass
         elif x == 4:
-            y = input("What block number in UTX?\n")
+            y = input("What block number in UTX?\n")    #  testing... change to random?
             tx = client.utx[int(y)]
             client.validate_transaction(tx)
-            """for i in range(len(client.utx)):
-                tx = client.utx[i]
-                if client.validate_transaction(tx):
-                    print("valid transaction for block", i)"""
-            #print(block)
-
-            #client.mine_transaction()
-        
+            """if client.validate_transaction(tx):
+                client.mine_transaction(tx, client.blockchain[-1]["id"])"""
 
         input()
         
