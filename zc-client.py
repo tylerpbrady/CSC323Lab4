@@ -72,7 +72,7 @@ class ZachCoinClient (Node):
                     self.utx = data['utxpool']
                 #TODO: Validate blocks
                 for i in range(len(self.blockchain) - 1, -1, -1):
-                    if not self.validate_block(self.blockchain[i]):
+                    if self.validate_block(self.blockchain[i]):
                         self.utx.append(self.blockchain[i]["tx"])
                         self.blockchain.remove(self.blockchain[i])
 
@@ -176,11 +176,12 @@ class ZachCoinClient (Node):
                              json.dumps(transaction["input"], sort_keys=True).encode("utf8") + json.dumps(transaction["output"], sort_keys=True).encode("utf8"))
             except:
                 print("Invalid transaction: signature does not verify")
+                return False
 
         return True
                             
     def validate_block(self, block):
-        req_fields = ["type", "id", "nonce", "pow", "prev"]
+        req_fields = ["type", "id", "nonce", "pow", "prev", "tx"]
         for f in req_fields: # a.
             if f not in block:
                 print("Invalid block: missing field", f)
