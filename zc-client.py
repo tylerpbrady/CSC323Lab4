@@ -143,6 +143,26 @@ class ZachCoinClient (Node):
                         if not self.sum_io(transaction, inp_ref): # v.
                             print("Invalid transaction: sum of input does not equal sum of outputs")
                             return False
+        
+        # iv
+        for block in self.blockchain:
+            if "input" in block["tx"] and block["tx"]["input"]["id"] == transaction["input"]["id"] and block["tx"]["input"]["n"] == transaction["input"]["n"]:
+                print("Invalid transaction: Attempted double spending")
+                return False
+            
+        # vi
+        for output in transaction["output"]:
+            if output["value"] <= 0:
+                print("Invalid transaction: Output value not a positive number")
+                return False
+            if len(output["pub_key"]) > 96: # this could be wrong, idk if i can just check if its bigger than 96
+                print("Invalid transaction: Public key longer than 96 bytes")
+                return False
+            
+        # viii
+        vk = VerifyingKey.from_string(bytes.fromhex(transaction["pub_key"]))
+        assert vk.verify(bytes.fromhex(transaction["sig"]), json.dumps(transaction["input"], sort_keys=True).encode("utf8") + json.dumps(transaction["output"], sort_keys=True).encode("utf8"))
+
         return True
                             
     def validate_block(self, block):
