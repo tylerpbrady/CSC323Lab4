@@ -71,10 +71,10 @@ class ZachCoinClient (Node):
                 elif data['type'] == self.UTXPOOL:
                     self.utx = data['utxpool']
                 #TODO: Validate blocks
-                for i in range(len(self.blockchain) - 1, 0, -1):
+                for i in range(len(self.blockchain) - 1, -1, -1):
                     if not self.validate_block(self.blockchain[i]):
+                        self.utx.append(self.blockchain[i]["tx"])
                         self.blockchain.remove(self.blockchain[i])
-                        #self.utx.append(self.blockchain[i]["tx"])
 
     def node_disconnect_with_outbound_node(self, connected_node):
         print("node wants to disconnect with oher outbound node: " + connected_node.id)
