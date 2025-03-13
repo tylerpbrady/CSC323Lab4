@@ -71,9 +71,10 @@ class ZachCoinClient (Node):
                 elif data['type'] == self.UTXPOOL:
                     self.utx = data['utxpool']
                 #TODO: Validate blocks
-                # call validate block here
-                # if (self.validate_block()):
-                # add to blockchain
+                for block in self.blockchain:
+                    if not self.validate_block(block):
+                        self.blockchain.remove(block)
+                        self.utx.append(block)
 
     def node_disconnect_with_outbound_node(self, connected_node):
         print("node wants to disconnect with oher outbound node: " + connected_node.id)
@@ -95,11 +96,19 @@ class ZachCoinClient (Node):
         # check that input is equal to sum of block outputs
         inp_transaction = block["input"]["n"]
         inp_val = prev[inp_transaction]["value"]
+        if not isinstance(inp_val, int):
+            print("Invalid UTX: input not an integer")
+            return False
 
         cur_outputs = 0
         for i in range(len(block["output"])):
-            cur_outputs += block["output"][i]["value"]
-
+            t = block["output"][i]["value"]
+            if isinstance(t, int):
+                cur_outputs += t
+            else:
+                print("Invalid UTX: outputs are not integers")
+                return False
+        print(cur_outputs, inp_val)
         return cur_outputs == inp_val
 
     def validate_transaction(self, transaction):
@@ -143,12 +152,14 @@ class ZachCoinClient (Node):
                         if not self.sum_io(transaction, inp_ref): # v.
                             print("Invalid transaction: sum of input does not equal sum of outputs")
                             return False
+                        
+
         
         # iv
-        for block in self.blockchain:
-            if "input" in block["tx"] and block["tx"]["input"]["id"] == transaction["input"]["id"] and block["tx"]["input"]["n"] == transaction["input"]["n"]:
+        """for block in self.blockchain:
+            if block["tx"]["input"]["id"] == transaction["input"]["id"] and block["tx"]["input"]["n"] == transaction["input"]["n"]:
                 print("Invalid transaction: Attempted double spending")
-                return False
+                return False"""
             
         # vi
         for output in transaction["output"]:
@@ -158,10 +169,13 @@ class ZachCoinClient (Node):
             if len(output["pub_key"]) > 96: # this could be wrong, idk if i can just check if its bigger than 96
                 print("Invalid transaction: Public key longer than 96 bytes")
                 return False
-            
-        # viii
-        vk = VerifyingKey.from_string(bytes.fromhex(transaction["pub_key"]))
-        assert vk.verify(bytes.fromhex(transaction["sig"]), json.dumps(transaction["input"], sort_keys=True).encode("utf8") + json.dumps(transaction["output"], sort_keys=True).encode("utf8"))
+            # viii
+            vk = VerifyingKey.from_string(bytes.fromhex(output["pub_key"]))
+            try:
+                vk.verify(bytes.fromhex(transaction["sig"]), 
+                             json.dumps(transaction["input"], sort_keys=True).encode("utf8") + json.dumps(transaction["output"], sort_keys=True).encode("utf8"))
+            except:
+                print("Invalid transaction: signature does not verify")
 
         return True
                             
@@ -182,34 +196,38 @@ class ZachCoinClient (Node):
                         print("Invalid block: incorrect block id")
                         return False
                 if f == "prev": # d.
-                    if block[f] is not self.blockchain[len(self.blockchain)-1]["id"]: # should be last block on blockchain
+                    ind = self.blockchain.index(block)
+                    if block[f] != self.blockchain[ind-1]["id"]:
                         print("Invalid block: does not point to previous block on blockchain")
+                        return False
                 if f == "pow":  # e.
-                    computed_pow = int(hashlib.sha256(json.dumps(block["tx"], sort_keys=True).encode('utf8') + block["prev"].encode('utf-8') + block["nonce"].encode('utf-8')).hexdigest(), 16)
-                    if computed_pow != block["pow"] or int(computed_pow, 16) > self.DIFFICULTY:
+                    computed_pow = hashlib.sha256(json.dumps(block["tx"], sort_keys=True).encode('utf8') + block["prev"].encode('utf-8') + block["nonce"].encode('utf-8')).hexdigest()
+                    if computed_pow != block["pow"]: #or int(computed_pow, 16) > self.DIFFICULTY:
                         print("Invalid block: Invalid proof of work")
                         return False
                 if f == "tx": # f.
                     return self.validate_transaction(block[f])
                 
-    def create_utx(self):
+    def create_utx(self, sk, p_pk, o_pk, input_block, amt):
+        #Creating a signature for a UTX
+        sig = sk.sign(json.dumps(utx['input'], sort_keys=True).encode('utf8') + json.dumps(utx['output'], sort_keys=True).encode('utf8')).hex()
+        output_lst = [{
+            'value': amt,
+            'pub_key': o_pk
+        }]
+        if amt < input_block["n"]:
+            output_lst.append(
+                {
+                    'value': (input_block["n"] - amt),
+                    'pub_key': p_pk
+                }
+            )
+
         utx = {
             'type': self.TRANSACTION,
-            'input': {
-                'id': BLOCK_ID,
-                'n': N
-            },
-            'sig': ECDSA_SIGNATURE,
-            'output': [
-                {
-                    'value': AMOUNT,
-                    'pub_key': ECDSA_PUBLIC_KEY
-                },
-                {
-                    'value': AMOUNT,
-                    'pub_key': ECDSA_PUBLIC_KEY
-                }
-            ]
+            'input': input_block,   # format is {'value': value, 'n': n}
+            'sig': sig,
+            'output': output_lst
         }
         return utx
         
@@ -283,10 +301,15 @@ def main():
         elif x == 3:
             pass
         elif x == 4:
-            tx = client.utx[1]
+            y = input("What block number in UTX?\n")
+            tx = client.utx[int(y)]
+            client.validate_transaction(tx)
+            """for i in range(len(client.utx)):
+                tx = client.utx[i]
+                if client.validate_transaction(tx):
+                    print("valid transaction for block", i)"""
             #print(block)
 
-            client.validate_transaction(tx)
             #client.mine_transaction()
         
 
