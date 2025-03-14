@@ -90,7 +90,7 @@ class ZachCoinClient (Node):
         
         return pow, nonce
     
-    def sum_io(self, block, prev):
+    def sum_io(self, block, prev, from_block=False):
         # get input block number
         # index into that block, get output'
         # check that input is equal to sum of block outputs
@@ -101,7 +101,10 @@ class ZachCoinClient (Node):
             return False
 
         cur_outputs = 0
-        for i in range(len(block["output"])):
+        b = 0
+        if  from_block:
+            b = 1
+        for i in range(len(block["output"]) - b):
             t = block["output"][i]["value"]
             if isinstance(t, int):
                 cur_outputs += t
@@ -111,7 +114,7 @@ class ZachCoinClient (Node):
         print(cur_outputs, inp_val)
         return cur_outputs == inp_val
 
-    def validate_transaction(self, transaction):
+    def validate_transaction(self, transaction, from_block=False):
         print(transaction)
         req_fields = ["type", "input", "sig", "output"]
         inp_fields = ["id", "n"]
@@ -149,7 +152,7 @@ class ZachCoinClient (Node):
                             if g not in o:
                                 print("Invalid transaction: missing field", g)
                                 return False
-                        if not self.sum_io(transaction, inp_ref): # v.
+                        if not self.sum_io(transaction, inp_ref, from_block): # v.
                             print("Invalid transaction: sum of input does not equal sum of outputs")
                             return False
                         
@@ -170,7 +173,11 @@ class ZachCoinClient (Node):
                 print("Invalid transaction: Public key longer than 96 bytes")
                 return False
             # viii
-            vk = VerifyingKey.from_string(bytes.fromhex(output["pub_key"]))
+            try:
+                vk = VerifyingKey.from_string(bytes.fromhex(output["pub_key"]))
+            except: 
+                print("Invalid transaction: signature is not hex encoded")
+                return False
             try:
                 vk.verify(bytes.fromhex(transaction["sig"]), 
                              json.dumps(transaction["input"], sort_keys=True).encode("utf8") + json.dumps(transaction["output"], sort_keys=True).encode("utf8"))
@@ -208,7 +215,7 @@ class ZachCoinClient (Node):
                         print("Invalid block: Invalid proof of work")
                         return False
                 if f == "tx": # f.
-                    return self.validate_transaction(block[f])
+                    return self.validate_transaction(block[f], from_block=True)
                 
     def create_utx(self, sk, p_pk, o_pk, input_block, amt):
         #Creating a signature for a UTX
