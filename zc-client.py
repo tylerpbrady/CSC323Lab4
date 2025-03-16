@@ -312,9 +312,15 @@ def main():
         elif x == 4:
             y = input("What block number in UTX?\n")    #  testing... change to random?
             tx = client.utx[int(y)]
-            client.validate_transaction(tx)
-            """if client.validate_transaction(tx):
-                client.mine_transaction(tx, client.blockchain[-1]["id"])"""
+            if client.validate_transaction(tx):
+                tx["output"].append(
+                    {
+                        "value": 50,
+                        "pub_key": sk.to_string().hex()
+                    })
+                client.mine_transaction(tx, client.blockchain[-1]["id"])
+
+                # then format and broadcast
 
         input()
         
