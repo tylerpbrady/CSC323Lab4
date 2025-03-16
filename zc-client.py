@@ -173,6 +173,13 @@ class ZachCoinClient (Node):
                 print("Invalid transaction: Public key longer than 96 bytes")
                 return False
             # viii
+
+            # print(f"output: {output}, last element: {transaction['output'][-1]}")
+            
+            if output == transaction["output"][-1]:
+                print("yeuhuhsih")
+                continue
+            
             try:
                 vk = VerifyingKey.from_string(bytes.fromhex(output["pub_key"]))
             except: 
