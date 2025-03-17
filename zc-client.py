@@ -254,7 +254,7 @@ class ZachCoinClient (Node):
 
         for block in self.blockchain:
             for i, output in enumerate(block["tx"]["output"]):
-                if output["pub_key"] == pub_key and (block["id"], i) in spent_money:
+                if output["pub_key"] == pub_key and (block["id"], i) not in spent_money:
                     unspend_money.add((block["id"], i, output["value"])) 
 
         for i, money in enumerate(unspend_money):
