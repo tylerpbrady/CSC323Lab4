@@ -244,6 +244,28 @@ class ZachCoinClient (Node):
                 if f == "tx": # f.
                     return self.validate_transaction(block[f], from_block=True)
                 
+
+    def find_your_money(self, pub_key):
+        spent_money = set()
+        unspend_money = set()
+
+        for block in self.blockchain:
+            spent_money.add((block["tx"]["input"]["id"], block["tx"]["input"]["n"]))
+
+        for block in self.blockchain:
+            for i, output in enumerate(block["tx"]["output"]):
+                if output["pub_key"] == pub_key and (block["id"], i) in spent_money:
+                    unspend_money.add((block["id"], i, output["value"])) 
+
+        for i, money in enumerate(unspend_money):
+            print("\nUnspent money:\n")
+            print(f"OPTION {i} {money}")
+        
+        choice = input("\nWhich transaction do you want\n")
+        return unspend_money[choice]
+
+        
+
     def create_utx(self, sk, p_pk, o_pk, input_block, amt):
         #Creating a signature for a UTX
         output_lst = [{
@@ -329,8 +351,13 @@ def main():
         # TODO: Add options for creating and mining transactions
         # as well as any other additional features
         elif x == 3:
-            inp = {'id': "abcde", 'n': 0}
-            tx = client.create_utx(sk, vk, "", inp, 45)
+
+            block_id, n, amount = client.find_your_money(vk)
+
+            recipient_key = input("who you want ot send coin to")
+
+            inp = {'id': "tyler", 'n': 0}
+            tx = client.create_utx(sk, vk, recipient_key, inp, amount)
             client.send_to_nodes(tx)
             print(tx)
         elif x == 4:
