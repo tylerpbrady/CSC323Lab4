@@ -200,6 +200,17 @@ class ZachCoinClient (Node):
             print("Invalid transaction: signature does not verify")
             #print(bytes.fromhex(tx["sig"]), json.dumps(tx["input"], sort_keys=True).encode("utf8") + json.dumps(tx["output"], sort_keys=True).encode("utf8"))
             return False
+        
+        saw = False
+        for block in self.blockchain:
+            if (block["tx"]["input"]["id"] == transaction["input"]["id"] and 
+                block["tx"]["input"]["n"] == transaction["input"]["n"]):
+                if saw:
+                    print("WTF")
+                    return False
+                else:
+                    saw = True
+
 
         return True
                             
