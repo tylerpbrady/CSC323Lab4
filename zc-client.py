@@ -71,8 +71,8 @@ class ZachCoinClient (Node):
                 elif data['type'] == self.UTXPOOL:
                     self.utx = data['utxpool']
                 #TODO: Validate blocks
-                for i in range(len(self.blockchain) - 1, -1, -1):
-                    if self.validate_block(self.blockchain[i]):
+                for i in range(len(self.blockchain) - 1, 0, -1):
+                    if not self.validate_block(self.blockchain[i]):
                         self.utx.append(self.blockchain[i]["tx"])
                         self.blockchain.remove(self.blockchain[i])
 
@@ -111,11 +111,11 @@ class ZachCoinClient (Node):
             else:
                 print("Invalid UTX: outputs are not integers")
                 return False
-        print(cur_outputs, inp_val)
+        #print(cur_outputs, inp_val)
         return cur_outputs == inp_val
 
     def validate_transaction(self, transaction, from_block=False):
-        print(transaction)
+        #print(transaction)
         req_fields = ["type", "input", "sig", "output"]
         inp_fields = ["id", "n"]
         out_fields = ["value", "pub_key"]
@@ -176,21 +176,33 @@ class ZachCoinClient (Node):
 
             # print(f"output: {output}, last element: {transaction['output'][-1]}")
             
-            if output == transaction["output"][-1]:
+            """if output == transaction["output"][-1]:
                 print("yeuhuhsih")
-                continue
+                continue"""
             
-            try:
+            """ try:
                 vk = VerifyingKey.from_string(bytes.fromhex(output["pub_key"]))
             except: 
                 print("Invalid transaction: signature is not hex encoded")
-                return False
+                return False"""
+            # the pub key is the one referred to by the input of the transaction
+            # need to get the block
+            """pk_ref_block = transaction["input"]["id"]
+            pk_num = transaction["input"]["n"]
+            pub_key = ""
+            for bl in self.blockchain:
+                if bl["id"] == pk_ref_block:
+                    pub_key = bl["tx"]["output"][pk_num]["pub_key"]
+            
+            tx = transaction
+            del tx["output"][-1]
+            vk = VerifyingKey.from_string(bytes.fromhex(pub_key))
             try:
-                vk.verify(bytes.fromhex(transaction["sig"]), 
-                             json.dumps(transaction["input"], sort_keys=True).encode("utf8") + json.dumps(transaction["output"], sort_keys=True).encode("utf8"))
+                vk.verify(bytes.fromhex(tx["sig"]), 
+                             json.dumps(tx["input"], sort_keys=True).encode("utf8") + json.dumps(tx["output"], sort_keys=True).encode("utf8"))
             except:
                 print("Invalid transaction: signature does not verify")
-                return False
+                return False"""
 
         return True
                             
@@ -226,25 +238,19 @@ class ZachCoinClient (Node):
                 
     def create_utx(self, sk, p_pk, o_pk, input_block, amt):
         #Creating a signature for a UTX
-        sig = sk.sign(json.dumps(utx['input'], sort_keys=True).encode('utf8') + json.dumps(utx['output'], sort_keys=True).encode('utf8')).hex()
         output_lst = [{
             'value': amt,
             'pub_key': o_pk
         }]
-        if amt < input_block["n"]:
-            output_lst.append(
-                {
-                    'value': (input_block["n"] - amt),
-                    'pub_key': p_pk
-                }
-            )
 
         utx = {
             'type': self.TRANSACTION,
-            'input': input_block,   # format is {'value': value, 'n': n}
-            'sig': sig,
+            'input': input_block,   # format is {'id': value, 'n': n}
             'output': output_lst
         }
+        utx["sig"] = sk.sign(json.dumps(utx['input'], sort_keys=True).encode('utf8') + json.dumps(utx['output'], sort_keys=True).encode('utf8')).hex()
+        del utx["output"]
+        utx["output"] = output_lst
         return utx
         
 
@@ -315,7 +321,10 @@ def main():
         # TODO: Add options for creating and mining transactions
         # as well as any other additional features
         elif x == 3:
-            pass
+            inp = {'id': "abcde", 'n': 0}
+            tx = client.create_utx(sk, vk, "", inp, 45)
+            client.send_to_nodes(tx)
+            print(tx)
         elif x == 4:
             y = input("What block number in UTX?\n")    #  testing... change to random?
             tx = client.utx[int(y)]
