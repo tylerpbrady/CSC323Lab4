@@ -70,6 +70,7 @@ class ZachCoinClient (Node):
                     self.utx.append(data)
                 elif data['type'] == self.BLOCKCHAIN:
                     self.blockchain = data['blockchain']
+                    print("data recieved," , self.blockchain[-1])
                 elif data['type'] == self.UTXPOOL:
                     self.utx = data['utxpool']
                 #TODO: Validate blocks
@@ -373,13 +374,13 @@ def main():
             client.send_to_nodes(tx)
             print(tx)
         elif x == 4:
-            y = input("What block number in UTX?\n")    #  testing... change to random?
-            tx = client.utx[int(y)]
+            #y = input("What block number in UTX?\n")    #  testing... change to random?
+            tx = client.utx[-1]#client.utx[int(y)]
             if client.validate_transaction(tx):
                 tx["output"].append(
                     {
                         "value": 50,
-                        "pub_key": sk.to_string().hex()
+                        "pub_key": vk.to_string().hex()
                     })
                 pow, nonce = client.mine_transaction(tx, client.blockchain[-1]["id"])
                 print(pow, nonce)
@@ -393,7 +394,10 @@ def main():
                     "prev": client.blockchain[-1]["id"],
                     "tx": tx
                 }
+                print(block)
+                #client.connect_with_node4(SERVER_ADDR, SERVER_PORT)
                 client.send_to_nodes(block)
+                #print(block in client.blockchain)
 
                 # then format and broadcast
 
