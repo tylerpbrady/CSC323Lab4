@@ -6,6 +6,8 @@ from Crypto import Random
 import copy
 import random
 
+### Tyler Brady and Madeline Park, Lab 4
+
 SERVER_ADDR = "zachcoin.net"
 SERVER_PORT = 9067
 
