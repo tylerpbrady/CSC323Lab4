@@ -3,6 +3,7 @@ from ecdsa import VerifyingKey, SigningKey
 from p2pnetwork.node import Node
 from Crypto.Cipher import AES
 from Crypto import Random
+import copy
 
 SERVER_ADDR = "zachcoin.net"
 SERVER_PORT = 9067
@@ -173,36 +174,32 @@ class ZachCoinClient (Node):
                 print("Invalid transaction: Public key longer than 96 bytes")
                 return False
             # viii
-
-            # print(f"output: {output}, last element: {transaction['output'][-1]}")
             
-            """if output == transaction["output"][-1]:
-                print("yeuhuhsih")
-                continue"""
-            
-            """ try:
-                vk = VerifyingKey.from_string(bytes.fromhex(output["pub_key"]))
-            except: 
-                print("Invalid transaction: signature is not hex encoded")
-                return False"""
-            # the pub key is the one referred to by the input of the transaction
-            # need to get the block
-            """pk_ref_block = transaction["input"]["id"]
-            pk_num = transaction["input"]["n"]
-            pub_key = ""
-            for bl in self.blockchain:
-                if bl["id"] == pk_ref_block:
-                    pub_key = bl["tx"]["output"][pk_num]["pub_key"]
-            
-            tx = transaction
-            del tx["output"][-1]
-            vk = VerifyingKey.from_string(bytes.fromhex(pub_key))
-            try:
-                vk.verify(bytes.fromhex(tx["sig"]), 
-                             json.dumps(tx["input"], sort_keys=True).encode("utf8") + json.dumps(tx["output"], sort_keys=True).encode("utf8"))
-            except:
-                print("Invalid transaction: signature does not verify")
-                return False"""
+        """ try:
+            vk = VerifyingKey.from_string(bytes.fromhex(output["pub_key"]))
+        except: 
+            print("Invalid transaction: signature is not hex encoded")
+            return False"""
+        # the pub key is the one referred to by the input of the transaction
+        # need to get the block
+        pk_ref_block = transaction["input"]["id"]
+        pk_num = transaction["input"]["n"]
+        pub_key = ""
+        for bl in self.blockchain:
+            if bl["id"] == pk_ref_block:
+                pub_key = bl["tx"]["output"][pk_num]["pub_key"]
+        
+        tx = copy.deepcopy(transaction)
+        del tx["output"][-1]
+        #print(tx)
+        vk = VerifyingKey.from_string(bytes.fromhex(pub_key))
+        try:
+            vk.verify(bytes.fromhex(transaction["sig"]), 
+                         json.dumps(tx['input'], sort_keys=True).encode('utf8') + json.dumps(tx['output'], sort_keys=True).encode('utf8'))
+        except:
+            print("Invalid transaction: signature does not verify")
+            #print(bytes.fromhex(tx["sig"]), json.dumps(tx["input"], sort_keys=True).encode("utf8") + json.dumps(tx["output"], sort_keys=True).encode("utf8"))
+            return False
 
         return True
                             
