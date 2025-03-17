@@ -355,7 +355,7 @@ def main():
                 tx["output"].append(
                     {
                         "value": 50,
-                        "pub_key": sk.to_string().hex()
+                        "pub_key": "b42963bf8d0ea2032ce052893267187b8ab5bf366f80d71dd8326c0f050287f4ed6af5156ea8c033fd287ced2b89d38c" #vk.to_string().hex()
                     })
                 pow, nonce = client.mine_transaction(tx, client.blockchain[-1]["id"])
                 print(pow, nonce)
@@ -369,6 +369,8 @@ def main():
                     "prev": client.blockchain[-1]["id"],
                     "tx": tx
                 }
+                print(block)
+                #client.connect_with_node(SERVER_ADDR, SERVER_PORT)
                 client.send_to_nodes(block)
 
                 # then format and broadcast
