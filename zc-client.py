@@ -234,32 +234,51 @@ class ZachCoinClient (Node):
                 
 
     def find_your_money(self, pub_key):
-        spent_money = set()
-        unspend_money = set()
+
+        spent_money = []
+        unspend_money = []
 
         for block in self.blockchain:
-            spent_money.add((block["tx"]["input"]["id"], block["tx"]["input"]["n"]))
+            spent_money.append((block["tx"]["input"]["id"], block["tx"]["input"]["n"]))
 
         for block in self.blockchain:
             for i, output in enumerate(block["tx"]["output"]):
+                
                 if output["pub_key"] == pub_key and (block["id"], i) not in spent_money:
-                    unspend_money.add((block["id"], i, output["value"])) 
+                    unspend_money.append((block["id"], i, output["value"])) 
+                # else:
+                #     print(f"\nmy pubkey {pub_key}\n other key {output['pub_key']}\n {(block['id'], i)}\n")
+        # print("IOFJOIWEJIOVJOWEJIOVJWIO")
+
 
         for i, money in enumerate(unspend_money):
             print("\nUnspent money:\n")
             print(f"OPTION {i} {money}")
         
         choice = input("\nWhich transaction do you want\n")
-        return unspend_money[choice]
+        return unspend_money[int(choice)]
 
         
 
-    def create_utx(self, sk, p_pk, o_pk, input_block, amt):
+    def create_utx(self, sk, p_pk, o_pk, input_block, amt, desired_amt):
         #Creating a signature for a UTX
-        output_lst = [{
-            'value': amt,
-            'pub_key': o_pk
-        }]
+
+
+        if amt != desired_amt:
+            residual = amt - desired_amt
+            output_lst = [{
+                'value': desired_amt,
+                'pub_key': o_pk
+            },
+            {
+                'value': residual,
+                'pub_key': p_pk
+            }]
+        else:
+            output_lst = [{
+                'value': amt,
+                'pub_key': o_pk
+            }]
 
         utx = {
             'type': self.TRANSACTION,
@@ -269,6 +288,9 @@ class ZachCoinClient (Node):
         utx["sig"] = sk.sign(json.dumps(utx['input'], sort_keys=True).encode('utf8') + json.dumps(utx['output'], sort_keys=True).encode('utf8')).hex()
         del utx["output"]
         utx["output"] = output_lst
+
+        print(output_lst)
+
         return utx
         
 
@@ -340,12 +362,14 @@ def main():
         # as well as any other additional features
         elif x == 3:
 
-            block_id, n, amount = client.find_your_money(vk)
+            block_id, n, amount = client.find_your_money(vk.to_string().hex())
 
-            recipient_key = input("who you want ot send coin to")
+            recipient_key = input("\nwho you want ot send coin to\n")
 
-            inp = {'id': "tyler", 'n': 0}
-            tx = client.create_utx(sk, vk, recipient_key, inp, amount)
+            how_much = input("\nhow much\n")
+
+            inp = {'id': block_id, 'n': n}
+            tx = client.create_utx(sk, vk.to_string().hex(), recipient_key, inp, amount, int(how_much))
             client.send_to_nodes(tx)
             print(tx)
         elif x == 4:
