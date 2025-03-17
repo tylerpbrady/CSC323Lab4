@@ -4,6 +4,7 @@ from p2pnetwork.node import Node
 from Crypto.Cipher import AES
 from Crypto import Random
 import copy
+import random
 
 SERVER_ADDR = "zachcoin.net"
 SERVER_PORT = 9067
@@ -156,14 +157,6 @@ class ZachCoinClient (Node):
                         if not self.sum_io(transaction, inp_ref, from_block): # v.
                             print("Invalid transaction: sum of input does not equal sum of outputs")
                             return False
-                        
-
-        
-        # iv
-        """for block in self.blockchain:
-            if block["tx"]["input"]["id"] == transaction["input"]["id"] and block["tx"]["input"]["n"] == transaction["input"]["n"]:
-                print("Invalid transaction: Attempted double spending")
-                return False"""
             
         # vi
         for output in transaction["output"]:
@@ -173,13 +166,7 @@ class ZachCoinClient (Node):
             if len(output["pub_key"]) > 96: # this could be wrong, idk if i can just check if its bigger than 96
                 print("Invalid transaction: Public key longer than 96 bytes")
                 return False
-            # viii
-            
-        """ try:
-            vk = VerifyingKey.from_string(bytes.fromhex(output["pub_key"]))
-        except: 
-            print("Invalid transaction: signature is not hex encoded")
-            return False"""
+        # viii
         # the pub key is the one referred to by the input of the transaction
         # need to get the block
         pk_ref_block = transaction["input"]["id"]
@@ -190,11 +177,12 @@ class ZachCoinClient (Node):
                 pub_key = bl["tx"]["output"][pk_num]["pub_key"]
         
         tx = copy.deepcopy(transaction)
-        del tx["output"][-1]
+        if from_block:
+            del tx["output"][-1]
         #print(tx)
         vk = VerifyingKey.from_string(bytes.fromhex(pub_key))
         try:
-            vk.verify(bytes.fromhex(transaction["sig"]), 
+            vk.verify(bytes.fromhex(tx["sig"]), 
                          json.dumps(tx['input'], sort_keys=True).encode('utf8') + json.dumps(tx['output'], sort_keys=True).encode('utf8'))
         except:
             print("Invalid transaction: signature does not verify")
@@ -206,7 +194,7 @@ class ZachCoinClient (Node):
             if (block["tx"]["input"]["id"] == transaction["input"]["id"] and 
                 block["tx"]["input"]["n"] == transaction["input"]["n"]):
                 if saw:
-                    print("WTF")
+                    print("Invalid transaction: attempted double spending")
                     return False
                 else:
                     saw = True
@@ -369,7 +357,19 @@ def main():
                         "value": 50,
                         "pub_key": sk.to_string().hex()
                     })
-                client.mine_transaction(tx, client.blockchain[-1]["id"])
+                pow, nonce = client.mine_transaction(tx, client.blockchain[-1]["id"])
+                print(pow, nonce)
+                block_id = hashlib.sha256(json.dumps(tx, sort_keys=True).encode('utf8')).hexdigest()
+                
+                block = {
+                    "type": client.BLOCK,
+                    "id": block_id,
+                    "nonce": nonce,
+                    "pow": pow,
+                    "prev": client.blockchain[-1]["id"],
+                    "tx": tx
+                }
+                client.send_to_nodes(block)
 
                 # then format and broadcast
 
